@@ -1,0 +1,150 @@
+import React, { useState, useEffect, useRef } from "react";
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState("Tables");
+  const [selectedTable, setSelectedTable] = useState(null);
+  const [tableData, setTableData] = useState([]);
+  const [reviseMode, setReviseMode] = useState(false);
+  const [revealedCount, setRevealedCount] = useState(-1); // start with -1 so first row is hidden initially
+  const [intervalTime, setIntervalTime] = useState(1500); // default speed set to 1500ms
+  const [page, setPage] = useState(0); // for pagination of number buttons
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    if (reviseMode && tableData.length > 0) {
+      setRevealedCount(-1);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+
+      intervalRef.current = setInterval(() => {
+        setRevealedCount((prev) => {
+          if (prev + 1 >= tableData.length - 1) {
+            clearInterval(intervalRef.current);
+            setReviseMode(false);
+          }
+          return prev + 1;
+        });
+      }, intervalTime);
+
+      return () => clearInterval(intervalRef.current);
+    }
+  }, [reviseMode, tableData, intervalTime]);
+
+  const generateTable = (num) => {
+    setSelectedTable(num);
+    const data = Array.from({ length: 10 }, (_, i) => ({
+      question: `${num} × ${i + 1} =`,
+      answer: num * (i + 1)
+    }));
+    setTableData(data);
+    setReviseMode(false);
+    setRevealedCount(data.length); // default full display
+  };
+
+  const startRevise = () => {
+    if (!selectedTable) return;
+    setReviseMode(true);
+    setRevealedCount(-1);
+  };
+
+  const numbersPerPage = 10;
+  const numbers = Array.from({ length: 20 }, (_, i) => i + 1);
+  const currentNumbers = numbers.slice(page * numbersPerPage, (page + 1) * numbersPerPage);
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
+      <div className="w-48 bg-white shadow-lg p-4 space-y-4">
+        {['Tables','Math Genius','Quiz'].map(tab => (
+          <button
+            key={tab}
+            className={`w-full p-2 rounded-lg ${activeTab===tab? 'bg-blue-500 text-white':'bg-gray-200'}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 p-6 overflow-auto">
+        {activeTab === "Tables" && (
+          <div>
+            <h2 className="text-lg font-bold mb-4">Select a Table</h2>
+
+            {/* Number buttons with pagination */}
+            <div className="grid grid-cols-5 gap-2 mb-4">
+              {currentNumbers.map((num) => (
+                <button
+                  key={num}
+                  className="bg-blue-200 hover:bg-blue-400 rounded-md p-1 text-sm"
+                  onClick={() => generateTable(num)}
+                >
+                  {num}
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-between mb-4">
+              <button
+                disabled={page === 0}
+                className={`px-3 py-1 rounded ${page===0? 'bg-gray-300':'bg-blue-500 text-white'}`}
+                onClick={() => setPage(page - 1)}
+              >
+                Prev
+              </button>
+              <button
+                disabled={(page + 1) * numbersPerPage >= numbers.length}
+                className={`px-3 py-1 rounded ${(page + 1) * numbersPerPage >= numbers.length ? 'bg-gray-300':'bg-blue-500 text-white'}`}
+                onClick={() => setPage(page + 1)}
+              >
+                Next
+              </button>
+            </div>
+
+            {/* Table display */}
+            {selectedTable && (
+              <div>
+                <h3 className="text-xl font-semibold mb-4">Table of {selectedTable}</h3>
+
+                {/* Revise controls */}
+                <div className="flex items-center space-x-2 mb-4">
+                  <button
+                    className="bg-purple-500 text-white px-4 py-2 rounded text-sm"
+                    onClick={startRevise}
+                  >
+                    Revise
+                  </button>
+                  <label className="flex items-center space-x-1 text-sm">
+                    <span>Speed (ms):</span>
+                    <input
+                      type="number"
+                      value={intervalTime}
+                      onChange={(e) => setIntervalTime(Number(e.target.value))}
+                      className="border rounded p-1 w-20 text-sm"
+                    />
+                  </label>
+                </div>
+
+                <div className="bg-white shadow p-6 rounded-lg min-h-[250px]">
+                  {tableData.map((row, idx) => (
+                    <p
+                      key={idx}
+                      className={`text-2xl font-bold mb-2 p-2 rounded ${idx % 2 === 0 ? 'bg-gray-100' : 'bg-gray-200'}`}
+                    >
+                      {row.question} {reviseMode && idx > revealedCount ? "" : row.answer}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab !== "Tables" && (
+          <div className="text-gray-500 text-lg">
+            {activeTab} module coming soon...
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
